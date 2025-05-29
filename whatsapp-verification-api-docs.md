@@ -8,14 +8,24 @@ The WhatsApp Verification API provides endpoints for sending and verifying phone
 
 All endpoints require Basic Authentication using the merchant's API key and secret.
 
-```
-Authorization: Basic API_KEY:API_SECRET
+```bash
+curl -u "API_KEY:API_SECRET"
 ```
 
-When using curl, you can use the `-u` flag:
+
+**Alternative: Using Authorization header :**
 ```bash
-curl -u API_KEY:API_SECRET
+# First encode your credentials to base64
+# Format: merchantApiKey:merchantSecret
+echo -n "your-api-key:your-secret" | base64
+
+# Then use:
+Authorization: Basic <base64-encoded-credentials>
 ```
+
+**Important:** 
+- Ensure your API key and secret are correct and active
+- Make sure there are no trailing spaces
 
 ## Endpoints
 
@@ -228,7 +238,7 @@ Authorization: Basic API_KEY:API_SECRET
 #### Using cURL:
 ```bash
 curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
-  -u API_KEY:API_SECRET \
+  -u "API_KEY:API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
     "phoneNumber": "+1234567890"
@@ -271,7 +281,7 @@ sendVerificationCode();
 #### Using cURL:
 ```bash
 curl -X POST https://api2.cycurid.com/v2/public/whatsapp/resendVerificationCode \
-  -u API_KEY:API_SECRET \
+  -u "API_KEY:API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
     "phoneNumber": "+1234567890"
@@ -314,7 +324,7 @@ resendVerificationCode();
 #### Using cURL:
 ```bash
 curl -X POST https://api2.cycurid.com/v2/public/whatsapp/verifyCode \
-  -u API_KEY:API_SECRET \
+  -u "API_KEY:API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
     "phoneNumber": "+1234567890",
