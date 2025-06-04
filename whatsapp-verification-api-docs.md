@@ -27,6 +27,30 @@ Authorization: Basic <base64-encoded-credentials>
 - Ensure your API key and secret are correct and active
 - Make sure there are no trailing spaces
 
+## Phone Number Formatting
+
+The API now supports enhanced phone number formatting with automatic E.164 conversion:
+
+### Supported Input Formats
+- **With Country Code**: `+1234567890`, `+442012345678`, `+2348031234567`
+- **Without Country Code**: `1234567890`, `2012345678`, `8031234567`
+- **With Leading Zeros**: `08031234567` (automatically cleaned)
+- **With Spaces/Dashes**: `+1 (234) 567-890` (automatically cleaned)
+
+### Country Code Support
+- Use the optional `countryCode` parameter for better international formatting
+- Supports all ISO 3166-1 alpha-2 country codes (US, CA, GB, NG, DE, FR, etc.)
+- Defaults to "CA" (Canada) if not provided
+- Examples:
+  - `"8031234567"` with `"countryCode": "NG"` → `+2348031234567`
+  - `"2012345678"` with `"countryCode": "GB"` → `+442012345678`
+  - `"6043554911"` with `"countryCode": "US"` → `+16043554911`
+
+### Validation
+- Phone numbers are validated using international standards
+- Invalid formats will be rejected with a 400 error
+- Numbers must be valid for the specified country
+
 ## Endpoints
 
 ### 1. Send Verification Code
@@ -44,14 +68,16 @@ Authorization: Basic API_KEY:API_SECRET
 **Request Body:**
 ```json
 {
-  "phoneNumber": "+1234567890"
+  "phoneNumber": "+1234567890",
+  "countryCode": "US"
 }
 ```
 
 **Request Body Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| phoneNumber | string | Yes | Phone number in E.164 format (e.g., +1234567890). Must match regex: `^\+[1-9]\d{1,14}$` |
+| phoneNumber | string | Yes | Phone number in various formats (e.g., +1234567890, 1234567890). The API will automatically format it to E.164 |
+| countryCode | string | No | 2-character ISO country code (e.g., "US", "CA", "GB", "NG"). Used for better phone number formatting when no country code is provided in phoneNumber. Defaults to "CA" |
 
 **Success Response:**
 - **Status Code:** 200 OK
@@ -67,12 +93,65 @@ Authorization: Basic API_KEY:API_SECRET
 **Error Responses:**
 
 - **Status Code:** 400 Bad Request
-  - **Body:**
+  - **Body (Invalid Phone Number Format):**
+  ```json
+  {
+    "success": false,
+    "message": "Phone number is too long for +1. Expected 10 digits after country code, but got 11 digits (1 extra). Number: 60435549280",
+    "errors": ["Phone number is too long for +1. Expected 10 digits after country code, but got 11 digits (1 extra). Number: 60435549280"]
+  }
+  ```
+  
+  - **Body (Invalid WhatsApp Recipient - Error 63024):**
+  ```json
+  {
+    "success": false,
+    "message": "Invalid WhatsApp recipient. The phone number may not have WhatsApp installed or may not be reachable.",
+    "error": "Detailed Twilio error message",
+    "errorCode": "63024",
+    "messageSid": "MMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+  ```
+  
+  - **Body (WhatsApp Delivery Failed - Error 63016):**
+  ```json
+  {
+    "success": false,
+    "message": "WhatsApp message could not be delivered. The recipient may have blocked your number or does not have WhatsApp.",
+    "error": "Detailed Twilio error message",
+    "errorCode": "63016",
+    "messageSid": "MMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+  ```
+  
+  - **Body (WhatsApp Not Available - Error 21608):**
+  ```json
+  {
+    "success": false,
+    "message": "WhatsApp is not available for this phone number.",
+    "error": "Detailed Twilio error message",
+    "errorCode": "21608",
+    "messageSid": "MMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+  ```
+  
+  - **Body (Invalid Phone Number - Error 21211):**
+  ```json
+  {
+    "success": false,
+    "message": "Invalid phone number format for WhatsApp.",
+    "error": "Detailed Twilio error message",
+    "errorCode": "21211",
+    "messageSid": "MMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+  ```
+  
+  - **Body (Validation Error):**
   ```json
   {
     "success": false,
     "message": "Validation failed",
-    "errors": ["phoneNumber - Invalid phone number format"]
+    "errors": ["phoneNumber - Phone number is required"]
   }
   ```
 
@@ -99,8 +178,8 @@ Authorization: Basic API_KEY:API_SECRET
   ```json
   {
     "success": false,
-    "message": "Failed to send SMS",
-    "error": "Error details"
+    "message": "Failed to send WhatsApp message",
+    "error": "Internal server error details"
   }
   ```
 
@@ -119,14 +198,16 @@ Authorization: Basic API_KEY:API_SECRET
 **Request Body:**
 ```json
 {
-  "phoneNumber": "+1234567890"
+  "phoneNumber": "+1234567890",
+  "countryCode": "US"
 }
 ```
 
 **Request Body Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| phoneNumber | string | Yes | Phone number in E.164 format (e.g., +1234567890). Must match regex: `^\+[1-9]\d{1,14}$` |
+| phoneNumber | string | Yes | Phone number in various formats (e.g., +1234567890, 1234567890). The API will automatically format it to E.164 |
+| countryCode | string | No | 2-character ISO country code (e.g., "US", "CA", "GB", "NG"). Used for better phone number formatting when no country code is provided in phoneNumber. Defaults to "CA" |
 
 **Responses:** Same as Send Verification Code endpoint
 
@@ -146,6 +227,7 @@ Authorization: Basic API_KEY:API_SECRET
 ```json
 {
   "phoneNumber": "+1234567890",
+  "countryCode": "US",
   "code": 123456
 }
 ```
@@ -153,7 +235,8 @@ Authorization: Basic API_KEY:API_SECRET
 **Request Body Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| phoneNumber | string | Yes | Phone number in E.164 format (e.g., +1234567890). Must match regex: `^\+[1-9]\d{1,14}$` |
+| phoneNumber | string | Yes | Phone number in various formats (e.g., +1234567890, 1234567890). The API will automatically format it to E.164 |
+| countryCode | string | No | 2-character ISO country code (e.g., "US", "CA", "GB", "NG"). Used for better phone number formatting when no country code is provided in phoneNumber. Defaults to "CA" |
 | code | number | Yes | 6-digit verification code. Must be between 100000 and 999999 |
 
 **Success Response:**
@@ -220,7 +303,7 @@ Authorization: Basic API_KEY:API_SECRET
 2. **Code Expiration:** Verification codes expire after 5 minutes. Any attempt to verify an expired code will result in a 400 error.
 
 3. **Database Storage:** The system stores:
-   - Phone number
+   - Phone number (automatically formatted to E.164)
    - Verification code
    - User ID
    - Message SID (from WhatsApp/Twilio)
@@ -230,6 +313,38 @@ Authorization: Basic API_KEY:API_SECRET
 4. **Duplicate Handling:** If a verification code is requested for a phone number that already has a pending verification, the system updates the existing record with a new code and timestamp.
 
 5. **Security:** Upon successful verification, the verification record is immediately deleted from the database to prevent replay attacks.
+
+6. **Delivery Validation:** The API validates actual message delivery, not just successful API calls:
+   - Checks immediate delivery status
+   - Waits 2 seconds and re-checks for delayed errors (like WhatsApp availability)
+   - Only returns success if the message can actually be delivered
+   - Returns specific error codes and messages for different failure types
+
+## Error Handling
+
+### Phone Number Validation Errors
+The API provides specific error messages for phone number format issues:
+- **Too many digits:** "Phone number is too long for +1. Expected 10 digits after country code, but got 11 digits (1 extra). Number: 60435549280"
+- **Too few digits:** "Phone number is too short for +1. Expected 10 digits after country code, but got 9 digits (missing 1). Number: 604355492"
+- **Invalid format:** Country-specific validation messages based on libphonenumber-js
+
+### WhatsApp Delivery Errors
+The API catches and reports specific WhatsApp delivery failures:
+
+| Error Code | Description | User Action |
+|------------|-------------|-------------|
+| **63024** | Invalid WhatsApp recipient | The phone number may not have WhatsApp installed or may not be reachable |
+| **63016** | Message undelivered | The recipient may have blocked your number or does not have WhatsApp |
+| **21211** | Invalid phone number format | Use a valid phone number format |
+| **21608** | WhatsApp not available | WhatsApp is not available for this phone number |
+
+### Error Response Format
+All error responses include:
+- `success: false`
+- `message`: User-friendly error description
+- `error`: Technical error details (when available)
+- `errorCode`: Twilio error code (when available)
+- `messageSid`: Twilio message ID (when available)
 
 ## Example Usage
 
@@ -241,7 +356,8 @@ curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
   -u "API_KEY:API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "phoneNumber": "+1234567890"
+    "phoneNumber": "+1234567890",
+    "countryCode": "US"
   }'
 ```
 
@@ -254,7 +370,8 @@ const sendVerificationCode = async () => {
     const response = await axios.post(
       'https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode',
       {
-        phoneNumber: '+1234567890'
+        phoneNumber: '+1234567890',
+        countryCode: 'US'
       },
       {
         headers: {
@@ -284,7 +401,8 @@ curl -X POST https://api2.cycurid.com/v2/public/whatsapp/resendVerificationCode 
   -u "API_KEY:API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "phoneNumber": "+1234567890"
+    "phoneNumber": "+1234567890",
+    "countryCode": "US"
   }'
 ```
 
@@ -297,7 +415,8 @@ const resendVerificationCode = async () => {
     const response = await axios.post(
       'https://api2.cycurid.com/v2/public/whatsapp/resendVerificationCode',
       {
-        phoneNumber: '+1234567890'
+        phoneNumber: '+1234567890',
+        countryCode: 'US'
       },
       {
         headers: {
@@ -328,6 +447,7 @@ curl -X POST https://api2.cycurid.com/v2/public/whatsapp/verifyCode \
   -H "Content-Type: application/json" \
   -d '{
     "phoneNumber": "+1234567890",
+    "countryCode": "US",
     "code": 123456
   }'
 ```
@@ -342,6 +462,7 @@ const verifyCode = async () => {
       'https://api2.cycurid.com/v2/public/whatsapp/verifyCode',
       {
         phoneNumber: '+1234567890',
+        countryCode: 'US',
         code: 123456
       },
       {
@@ -362,6 +483,92 @@ const verifyCode = async () => {
 };
 
 verifyCode();
+```
+
+## International Examples
+
+### Nigerian Number Example
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "8031234567",
+    "countryCode": "NG"
+  }'
+```
+This will format to `+2348031234567` and send to Nigeria.
+
+### UK Number Example
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "2012345678",
+    "countryCode": "GB"
+  }'
+```
+This will format to `+442012345678` and send to the UK.
+
+### Backward Compatibility
+The API maintains full backward compatibility. Existing requests without the `countryCode` parameter will continue to work:
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "+1234567890"
+  }'
+```
+
+## Error Examples
+
+### Invalid Phone Number Format
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "+160435549110"}'
+
+# Response:
+{
+  "success": false,
+  "message": "Phone number is too long for +1. Expected 10 digits after country code, but got 11 digits (1 extra). Number: 60435549110",
+  "errors": ["Phone number is too long for +1. Expected 10 digits after country code, but got 11 digits (1 extra). Number: 60435549110"]
+}
+```
+
+### WhatsApp Not Available (Error 63024)
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "+16043554911"}'
+
+# Response:
+{
+  "success": false,
+  "message": "Invalid WhatsApp recipient. The phone number may not have WhatsApp installed or may not be reachable.",
+  "error": "The 'To' phone number: +16043554911, is not currently reachable via WhatsApp",
+  "errorCode": "63024",
+  "messageSid": "MMe95b5346055434981d1cbdb87589617a"
+}
+```
+
+### Wrong Country Code
+```bash
+curl -X POST https://api2.cycurid.com/v2/public/whatsapp/sendVerificationCode \
+  -u "API_KEY:API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "6043554911", "countryCode": "GB"}'
+
+# Response:
+{
+  "success": false,
+  "message": "Invalid phone number \"6043554911\" has invalid format for country code +44",
+  "errors": ["Invalid phone number \"6043554911\" has invalid format for country code +44"]
+}
 ```
 
 ## Rate Limiting
